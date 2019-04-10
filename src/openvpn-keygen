@@ -116,7 +116,7 @@ function ini_pki {
 
 function create_ca {
     cd "${ca_dir}"/
-    easyrsa build-ca nopass
+    echo "sophia_ca" | easyrsa build-ca nopass > /dev/null 2>&1
     logging_info "Built CA with nopass"
 
     openvpn --genkey --secret "${key_dir}"/ta.key > /dev/null 2>&1
