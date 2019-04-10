@@ -1,0 +1,80 @@
+#!/bin/bash
+
+function init {
+    workdir_ca="/root/sophiavpn/ca/easy-rsa"
+    workdir_keygen="/root/sophiavpn/build/easy-rsa"
+    keydir="/root/sophiavpn/keys"
+
+    mkdir -p "${workdir_ca}" "${workdir_keygen}" "${keydir}"
+    cp -auv /etc/easy-rsa/* "${workdir_ca}"/
+    cp -auv /etc/easy-rsa/* "${workdir_keygen}"/
+
+    cd "${workdir_ca}"/
+    easyrsa init-pki
+    
+    cd "${workdir_keygen}"/
+    easyrsa init-pki
+}
+
+
+function create_ca {
+    cd "${workdir_ca}"/
+    easyrsa build-ca
+    openvpn --genkey --secret "${keydir}"/ta.key    
+}
+
+
+function create_server {
+    mkdir -p "${keydir}"/"${1}"
+    cp "${workdir_ca}"/pki/ca.crt "${keydir}"/"${1}"/
+
+    cd "${workdir_keygen}"/
+    easyrsa gen-req "${1}" nopass
+
+    cp "${workdir_keygen}"/pki/private/"${1}".key "${keydir}"/"${1}"/
+    openssl dhparam -out "${keydir}"/"${1}"/dh.pem 2048
+
+    cd "${workdir_ca}"/
+    easyrsa import-req "${workdir_keygen}"/pki/reqs/"${1}".req "${1}"
+    easyrsa sign-req server "${1}"
+    cp "${workdir_ca}"/pki/issued/"${1}".crt "${keydir}"/"${1}"/
+    cp "${keydir}"/ta.key "${keydir}"/"${1}"/
+}
+
+
+
+function create_client {
+    mkdir -p "${keydir}"/"${1}"
+
+    cd "${workdir_keygen}"/
+    easyrsa gen-req "${1}" nopass
+
+    cd "${workdir_ca}"/
+    easyrsa import-req "${workdir_keygen}"/pki/reqs/"${1}".req "${1}"
+    easyrsa sign-req client "${1}"
+    cp "${workdir_ca}"/pki/issued/"${1}".crt "${keydir}"/"${1}"/
+    cp "${workdir_keygen}"/pki/private/"${1}".key "${keydir}"/"${1}"/
+    cp "${keydir}"/ta.key "${keydir}"/"${1}"/
+}
+
+
+function main {
+    init
+    create_ca
+    create_server "srv_sophia"
+    create_server "srv_logos"
+    create_client "cln_logos"
+    create_client "cln_endurance"
+    create_client "cln_atlantis"
+    create_client "cln_voyager"
+    create_client "cln_valkyrie"
+    create_client "cln_ranger_1"
+    create_client "cln_ranger_2"
+    create_client "cln_navigator"
+    create_client "cln_hellgate"
+    create_client "cln_hellhound"
+}
+
+main
+
+exit 0
