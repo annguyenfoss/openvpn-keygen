@@ -1,65 +1,189 @@
 #!/bin/bash
 
-function init {
-    workdir_ca="/root/sophiavpn/ca/easy-rsa"
-    workdir_keygen="/root/sophiavpn/build/easy-rsa"
-    keydir="/root/sophiavpn/keys"
 
-    mkdir -p "${workdir_ca}" "${workdir_keygen}" "${keydir}"
-    cp -auv /etc/easy-rsa/* "${workdir_ca}"/
-    cp -auv /etc/easy-rsa/* "${workdir_keygen}"/
+### Logging functions
+function current_timestamp {
+    $(which date) +"%d-%m-%Y, %H:%M:%S"
+}
 
-    cd "${workdir_ca}"/
-    easyrsa init-pki
+
+function logger {
+    ## Take 2 positional arguments.
+    ## ${1} for loglevel: debug, info, warning, error
+    ## ${2} for log messages
+    ##
+    ## ${1} ${2} MUST always be wrapped in double quotes.
+    ## Logging event at level ERROR will cause the program to exit.
+    case "${log_level}" in
+        "debug"|"DEBUG")
+            log_level_num=10
+            ;;
+        "info"|"INFO")
+            log_level_num=20
+            ;;
+        "warning"|"WARNING")
+            log_level_num=30
+            ;;
+        "error"|"ERROR")
+            log_level_num=40
+            ;;
+        *)
+            log_level="INFO"
+            log_level_num=20
+    esac
+
+    case "${1}" in
+        "debug"|"DEBUG")
+            if (( ${log_level_num} <= 10 )); then
+                echo "[$(current_timestamp)] DEBUG: ${2}"
+            fi
+            ;;
+        "info"|"INFO")
+            if (( ${log_level_num} <= 20 )); then
+                echo "[$(current_timestamp)] INFO: ${2}"
+            fi
+            ;;
+        "warning"|"WARNING")
+            if (( ${log_level_num} <= 30 )); then
+                echo "[$(current_timestamp)] WARNING: ${2}"
+            fi
+            ;;
+        "error"|"ERROR")
+            if (( ${log_level_num} <= 40 )); then
+                echo "[$(current_timestamp)] ERROR: ${2}"
+            fi
+            exit 1
+    esac
+}
+
+
+function logging_debug {
+    ## Take 1 positional argument.
+    ## ${1} for log message.
+    logger "DEBUG" ${1}
+}
+
+
+function logging_info {
+    ## Take 1 positional argument.
+    ## ${1} for log message.
+    logger "INFO" "${1}"
+}
+
+
+function logging_warning {
+    ## Take 1 positional argument.
+    ## ${1} for log message.
+    logger "WARNING" "${1}"
+}
+
+
+function logging_error {
+    ## Take 1 positional argument.
+    ## ${1} for log message.
+    ##
+    ## This function will cause the program to exit.
+    logger "ERROR" "${1}"
+}
+###
+
+
+function init_env {
+    ca_dir="/root/sophiavpn/ca"
+    build_dir="/root/sophiavpn/build"
+    key_dir="/root/sophiavpn/keys"
+}
+
+
+function ini_pki {
+    mkdir -p "${ca_dir}" "${build_dir}" "${key_dir}"
+
+    cp -au /etc/easy-rsa/* "${ca_dir}"/
+    cp -au /etc/easy-rsa/* "${build_dir}"/
+    logging_info "Copied /etc/easy-rsa to ${ca_dir} & ${build_dir}" 
+
+    cd "${ca_dir}"/
+    easyrsa init-pki > /dev/null 2>&1
+    logging_info "Initiated pki for CA"
+
     
-    cd "${workdir_keygen}"/
-    easyrsa init-pki
+    cd "${build_dir}"/
+    easyrsa init-pki > /dev/null 2>&1
+    logging_info "Initiated pki for keygen builds"
+
 }
 
 
 function create_ca {
-    cd "${workdir_ca}"/
-    easyrsa build-ca
-    openvpn --genkey --secret "${keydir}"/ta.key    
+    cd "${ca_dir}"/
+    easyrsa build-ca nopass
+    logging_info "Built CA with nopass"
+
+    openvpn --genkey --secret "${key_dir}"/ta.key > /dev/null 2>&1
+    logging_info "Built ta.key"
+
+    openssl dhparam -out "${key_dir}"/dh.pem 2048 > /dev/null 2>&1
+    logging_info "Built dh.pem"
+
 }
 
 
 function create_server {
-    mkdir -p "${keydir}"/"${1}"
-    cp "${workdir_ca}"/pki/ca.crt "${keydir}"/"${1}"/
+    srv_name="${1}"
 
-    cd "${workdir_keygen}"/
-    easyrsa gen-req "${1}" nopass
+    cd "${build_dir}"/
+    echo | easyrsa gen-req "${srv_name}" nopass > /dev/null 2>&1
+    logging_info "Generated request for ${srv_name}"
 
-    cp "${workdir_keygen}"/pki/private/"${1}".key "${keydir}"/"${1}"/
-    openssl dhparam -out "${keydir}"/"${1}"/dh.pem 2048
+    cd "${ca_dir}"/
+    easyrsa import-req \
+        "${build_dir}"/pki/reqs/"${srv_name}".req \
+        "${srv_name}" > /dev/null 2>&1
+    logging_info "Imported request into CA for ${srv_name}"
+    echo "yes" | easyrsa sign-req server "${srv_name}" > /dev/null 2>&1
+    logging_info "Signed request by CA for ${srv_name}"
 
-    cd "${workdir_ca}"/
-    easyrsa import-req "${workdir_keygen}"/pki/reqs/"${1}".req "${1}"
-    easyrsa sign-req server "${1}"
-    cp "${workdir_ca}"/pki/issued/"${1}".crt "${keydir}"/"${1}"/
-    cp "${keydir}"/ta.key "${keydir}"/"${1}"/
+    mkdir -p "${key_dir}"/"${srv_name}"
+    cp "${build_dir}"/pki/private/"${srv_name}".key \
+       "${ca_dir}"/pki/ca.crt \
+       "${ca_dir}"/pki/issued/"${srv_name}".crt \
+       "${key_dir}"/ta.key \
+       "${key_dir}"/dh.pem \
+       "${key_dir}"/"${srv_name}"/
+    logging_info "Deployed server keys for ${srv_name}"
+
 }
 
 
 
 function create_client {
-    mkdir -p "${keydir}"/"${1}"
+    cln_name="${1}"
 
-    cd "${workdir_keygen}"/
-    easyrsa gen-req "${1}" nopass
+    cd "${build_dir}"/
+    echo | easyrsa gen-req "${cln_name}" nopass > /dev/null 2>&1
+    logging_info "Generated request for ${cln_name}"
 
-    cd "${workdir_ca}"/
-    easyrsa import-req "${workdir_keygen}"/pki/reqs/"${1}".req "${1}"
-    easyrsa sign-req client "${1}"
-    cp "${workdir_ca}"/pki/issued/"${1}".crt "${keydir}"/"${1}"/
-    cp "${workdir_keygen}"/pki/private/"${1}".key "${keydir}"/"${1}"/
-    cp "${keydir}"/ta.key "${keydir}"/"${1}"/
+    cd "${ca_dir}"/
+    easyrsa import-req \
+        "${build_dir}"/pki/reqs/"${cln_name}".req \
+        "${cln_name}" > /dev/null 2>&1
+    logging_info "Imported request into CA for ${cln_name}"
+
+    echo "yes" | easyrsa sign-req client "${cln_name}" > /dev/null 2>&1
+    logging_info "Signed request by CA for ${cln_name}"
+
+    mkdir -p "${key_dir}"/"${cln_name}"
+    cp "${ca_dir}"/pki/issued/"${cln_name}".crt \
+       "${build_dir}"/pki/private/"${cln_name}".key \
+       "${key_dir}"/ta.key \
+       "${key_dir}"/"${cln_name}"/
+    logging_info "Deployed client keys for ${cln_name}"
 }
 
 
 function main {
-    init
+    init_env
+    ini_pki
     create_ca
     create_server "srv_sophia"
     create_server "srv_logos"
