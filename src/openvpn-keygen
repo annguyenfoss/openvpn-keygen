@@ -165,14 +165,14 @@ function create_server {
         >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
     echo -e "</cert>\n\n" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
 
-    echo"<key>" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+    echo "<key>" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
     cat "${build_dir}"/pki/private/"${srv_name}".key \
         >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
     echo -e "</key>\n\n" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
 
     echo "<tls-auth>" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
     cat "${key_dir}"/ta.key >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
-    echo -e "</tls-auth>\n\n" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+    echo -e "</tls-auth>" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
 
     logging_info "Deployed server keys for ${srv_name}"
 
@@ -209,14 +209,14 @@ function create_client {
         >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
     echo -e "</cert>\n\n" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
 
-    echo"<key>" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+    echo "<key>" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
     cat "${build_dir}"/pki/private/"${cln_name}".key \
         >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
     echo -e "</key>\n\n" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
 
     echo "<tls-auth>" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
     cat "${key_dir}"/ta.key >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
-    echo -e "</tls-auth>\n\n" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+    echo -e "</tls-auth>" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
 
     logging_info "Deployed client keys for ${cln_name}"
 }
