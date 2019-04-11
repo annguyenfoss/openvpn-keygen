@@ -89,6 +89,8 @@ function logging_error {
 
 
 function init_env {
+    script_dir="$(dirname "$0")"
+    script_conf_dir="${script_dir}/../conf"
     ca_dir="/root/sophiavpn/ca"
     build_dir="/root/sophiavpn/build"
     key_dir="/root/sophiavpn/keys"
@@ -144,12 +146,34 @@ function create_server {
     logging_info "Signed request by CA for ${srv_name}"
 
     mkdir -p "${key_dir}"/"${srv_name}"
-    cp "${build_dir}"/pki/private/"${srv_name}".key \
-       "${ca_dir}"/pki/ca.crt \
-       "${ca_dir}"/pki/issued/"${srv_name}".crt \
-       "${key_dir}"/ta.key \
-       "${key_dir}"/dh.pem \
-       "${key_dir}"/"${srv_name}"/
+
+    cp "${script_conf_dir}"/ipp "${key_dir}"/"${srv_name}"/sophia_ipp
+
+    cp "${script_conf_dir}"/server.conf \
+       "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+
+    echo "<ca>" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+    cat "${ca_dir}"/pki/ca.crt >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+    echo -e "</ca>\n\n" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+
+    echo "<dh>" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+    cat "${key_dir}"/dh.pem >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+    echo -e "</dh>\n\n" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+
+    echo "<cert>" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+    cat "${ca_dir}"/pki/issued/"${srv_name}".crt \
+        >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+    echo -e "</cert>\n\n" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+
+    echo"<key>" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+    cat "${build_dir}"/pki/private/"${srv_name}".key \
+        >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+    echo -e "</key>\n\n" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+
+    echo "<tls-auth>" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+    cat "${key_dir}"/ta.key >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+    echo -e "</tls-auth>\n\n" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+
     logging_info "Deployed server keys for ${srv_name}"
 
 }
@@ -173,10 +197,27 @@ function create_client {
     logging_info "Signed request by CA for ${cln_name}"
 
     mkdir -p "${key_dir}"/"${cln_name}"
-    cp "${ca_dir}"/pki/issued/"${cln_name}".crt \
-       "${build_dir}"/pki/private/"${cln_name}".key \
-       "${key_dir}"/ta.key \
-       "${key_dir}"/"${cln_name}"/
+    cp "${script_conf_dir}"/client.conf \
+       "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+
+    echo "<ca>" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+    cat "${ca_dir}"/pki/ca.crt >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+    echo -e "</ca>\n\n" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+
+    echo "<cert>" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+    cat "${ca_dir}"/pki/issued/"${cln_name}".crt \
+        >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+    echo -e "</cert>\n\n" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+
+    echo"<key>" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+    cat "${build_dir}"/pki/private/"${cln_name}".key \
+        >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+    echo -e "</key>\n\n" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+
+    echo "<tls-auth>" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+    cat "${key_dir}"/ta.key >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+    echo -e "</tls-auth>\n\n" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+
     logging_info "Deployed client keys for ${cln_name}"
 }
 
@@ -185,18 +226,18 @@ function main {
     init_env
     ini_pki
     create_ca
-    create_server "srv_sophia"
-    create_server "srv_logos"
-    create_client "cln_logos"
-    create_client "cln_endurance"
-    create_client "cln_atlantis"
-    create_client "cln_voyager"
-    create_client "cln_valkyrie"
-    create_client "cln_ranger_1"
-    create_client "cln_ranger_2"
-    create_client "cln_navigator"
-    create_client "cln_hellgate"
-    create_client "cln_hellhound"
+    create_server "sophia_srv_sophia"
+    create_server "sophia_srv_logos"
+    create_client "sophia_cln_logos"
+    create_client "sophia_cln_endurance"
+    create_client "sophia_cln_atlantis"
+    create_client "sophia_cln_voyager"
+    create_client "sophia_cln_valkyrie"
+    create_client "sophia_cln_ranger_1"
+    create_client "sophia_cln_ranger_2"
+    create_client "sophia_cln_navigator"
+    create_client "sophia_cln_hellgate"
+    create_client "sophia_cln_hellhound"
 }
 
 main
