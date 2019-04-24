@@ -121,10 +121,10 @@ function create_ca {
     echo "sophia_ca" | easyrsa build-ca nopass > /dev/null 2>&1
     logging_info "Built CA with nopass"
 
-    openvpn --genkey --secret "${key_dir}"/ta.key > /dev/null 2>&1
+    openvpn --genkey --secret "${ca_dir}"/ta.key > /dev/null 2>&1
     logging_info "Built ta.key"
 
-    openssl dhparam -out "${key_dir}"/dh.pem 2048 > /dev/null 2>&1
+    openssl dhparam -out "${ca_dir}"/dh.pem 2048 > /dev/null 2>&1
     logging_info "Built dh.pem"
 
 }
@@ -157,7 +157,7 @@ function create_server {
     echo -e "</ca>\n\n" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
 
     echo "<dh>" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
-    cat "${key_dir}"/dh.pem >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+    cat "${ca_dir}"/dh.pem >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
     echo -e "</dh>\n\n" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
 
     echo "<cert>" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
@@ -171,7 +171,7 @@ function create_server {
     echo -e "</key>\n\n" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
 
     echo "<tls-auth>" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
-    cat "${key_dir}"/ta.key >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
+    cat "${ca_dir}"/ta.key >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
     echo -e "</tls-auth>" >> "${key_dir}"/"${srv_name}"/"${srv_name}".conf
 
     logging_info "Deployed server keys for ${srv_name}"
@@ -215,7 +215,7 @@ function create_client {
     echo -e "</key>\n\n" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
 
     echo "<tls-auth>" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
-    cat "${key_dir}"/ta.key >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
+    cat "${ca_dir}"/ta.key >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
     echo -e "</tls-auth>" >> "${key_dir}"/"${cln_name}"/"${cln_name}".conf
 
     logging_info "Deployed client keys for ${cln_name}"
